@@ -47,7 +47,7 @@ jobs:
           assert text.count(anchor) == 1
           text = text.replace(anchor,
               'if(VCPKG_TARGET_IS_IOS)\n'
-              '    vcpkg_list(APPEND CONFIGURE_OPTIONS --host=aarch64-apple-ios)\n'
+              '    vcpkg_list(APPEND CONFIGURE_OPTIONS --host=aarch64-apple-ios icu_cv_host_frag=mh-darwin)\n'
               'endif()\n\n' + anchor, 1)
           path.write_text(text)
           PY
