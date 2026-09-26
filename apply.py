@@ -64,6 +64,16 @@ def plan(upstream: Path) -> dict[Path, str]:
         'if (UNIX AND NOT IOS AND NOT HAIKU AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "BSD")', "libdl")
     changes[path] = source
 
+    path = upstream / "src/openrct2/core/DataSerialiserTraits.h"
+    source = path.read_text()
+    source = replace_once(source,
+        "            s.encode(stream, val.GetLength());\n\n            stream->Write(val.GetData(), val.GetLength());",
+        "            const auto length = static_cast<uint32_t>(val.GetLength());\n"
+        "            s.encode(stream, length);\n\n"
+        "            stream->Write(val.GetData(), length);",
+        "MemoryStream serialized length")
+    changes[path] = source
+
     for relative in ("src/openrct2/platform/Platform.macOS.mm", "src/openrct2-ui/UiContext.macOS.mm"):
         path = upstream / relative
         source = path.read_text()
