@@ -27,6 +27,14 @@ def plan(upstream: Path) -> dict[Path, str]:
         'if (APPLE AND NOT IOS)\n    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_OSX_ARCHITECTURES}"', "macOS processor")
     source = replace_once(source,
         '    "APPLE" OFF)\n', '    "APPLE;NOT IOS" OFF)\n', "macOS dependencies")
+    source = replace_once(source,
+        'install(TARGETS "openrct2" RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")',
+        'install(TARGETS "openrct2" RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" BUNDLE DESTINATION "Applications")',
+        "iOS GUI install destination")
+    source = replace_once(source,
+        'install(TARGETS "openrct2-cli" OPTIONAL RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")',
+        'install(TARGETS "openrct2-cli" OPTIONAL RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" BUNDLE DESTINATION "Applications")',
+        "iOS CLI install destination")
     changes[path] = source
 
     path = upstream / "cmake/platform.cmake"

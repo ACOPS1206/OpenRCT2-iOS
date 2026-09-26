@@ -30,6 +30,13 @@ jobs:
           repository: microsoft/vcpkg
           path: vcpkg
 
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: openrct2-ios-vcpkg-arm64-v1
+
       - name: Prepare build tools
         run: |
           brew install pkg-config ninja
@@ -52,6 +59,13 @@ jobs:
           path.write_text(text)
           PY
           ./vcpkg/vcpkg install sdl2 icu libzip zlib zstd libpng --triplet arm64-ios
+
+      - name: Save vcpkg binary cache
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: openrct2-ios-vcpkg-arm64-v1
 
       - name: Apply iOS port
         run: python3 apply.py upstream
