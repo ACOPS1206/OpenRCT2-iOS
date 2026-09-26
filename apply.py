@@ -74,6 +74,14 @@ def plan(upstream: Path) -> dict[Path, str]:
         "MemoryStream serialized length")
     changes[path] = source
 
+    path = upstream / "src/openrct2/core/FlagHolder.hpp"
+    source = path.read_text()
+    source = replace_once(source,
+        ": holder(EnumsToFlags(types...))",
+        ": holder(static_cast<THolderType>(EnumsToFlags(types...)))",
+        "flag holder narrowing")
+    changes[path] = source
+
     for relative in ("src/openrct2/platform/Platform.macOS.mm", "src/openrct2-ui/UiContext.macOS.mm"):
         path = upstream / relative
         source = path.read_text()
