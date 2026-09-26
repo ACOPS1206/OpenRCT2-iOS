@@ -1,0 +1,89 @@
+name: Build iOS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 180
+    steps:
+      - name: Check out port
+        uses: actions/checkout@v4
+
+      - name: Check out OpenRCT2
+        uses: actions/checkout@v4
+        with:
+          repository: OpenRCT2/OpenRCT2
+          ref: develop
+          path: upstream
+          submodules: recursive
+
+      - name: Check out vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - name: Prepare build tools
+        run: |
+          brew install pkg-config ninja
+          ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Build iOS libraries
+        run: |
+          ./vcpkg/vcpkg install sdl2 icu libzip zlib zstd libpng --triplet arm64-ios
+
+      - name: Apply iOS port
+        run: python3 apply.py upstream
+
+      - name: Configure
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/vcpkg/installed/arm64-ios/lib/pkgconfig:${{ github.workspace }}/vcpkg/installed/arm64-ios/share/pkgconfig
+        run: |
+          cmake -S upstream -B build -G Xcode \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=arm64-ios \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DOPENRCT2_USE_CCACHE=OFF \
+            -DMACOS_USE_DEPENDENCIES=OFF \
+            -DMACOS_BUNDLE=OFF \
+            -DDISABLE_OPENGL=ON \
+            -DDISABLE_NETWORK=ON \
+            -DDISABLE_HTTP=ON \
+            -DDISABLE_VERSION_CHECKER=ON \
+            -DDISABLE_TTF=ON \
+            -DDISABLE_FLAC=ON \
+            -DDISABLE_VORBIS=ON \
+            -DENABLE_SCRIPTING=OFF \
+            -DDOWNLOAD_TITLE_SEQUENCES=OFF \
+            -DDOWNLOAD_OBJECTS=OFF \
+            -DDOWNLOAD_OPENSFX=OFF \
+            -DDOWNLOAD_OPENMUSIC=OFF
+
+      - name: Compile
+        run: cmake --build build --config Release --target openrct2 --parallel 4
+
+      - name: Package unsigned IPA
+        run: |
+          app=$(find build -type d -name 'openrct2.app' -o -type d -name 'OpenRCT2.app' | head -1)
+          test -n "$app"
+          mkdir -p Payload
+          cp -R "$app" Payload/
+          zip -qry OpenRCT2-iOS-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenRCT2-iOS-unsigned
+          path: OpenRCT2-iOS-unsigned.ipa
+          if-no-files-found: error
