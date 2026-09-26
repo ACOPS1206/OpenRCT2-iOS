@@ -28,6 +28,13 @@ def plan(upstream: Path) -> dict[Path, str]:
     source = replace_once(source,
         '    "APPLE" OFF)\n', '    "APPLE;NOT IOS" OFF)\n', "macOS dependencies")
     source = replace_once(source,
+        '        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=objc-method-access")',
+        '        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=objc-method-access")\n'
+        '        if(IOS)\n'
+        '            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=shorten-64-to-32")\n'
+        '        endif()',
+        "iOS narrowing warning policy")
+    source = replace_once(source,
         'install(TARGETS "openrct2" RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")',
         'install(TARGETS "openrct2" RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" BUNDLE DESTINATION "Applications")',
         "iOS GUI install destination")
