@@ -81,6 +81,31 @@ def plan(upstream: Path) -> dict[Path, str]:
         "MemoryStream serialized length")
     changes[path] = source
 
+    path = upstream / "src/openrct2/core/FileWatcher.h"
+    source = path.read_text()
+    source = replace_once(source, '#include "StringTypes.h"',
+        '#include "StringTypes.h"\n#ifdef __APPLE__\n    #include <TargetConditionals.h>\n#endif',
+        "iOS file watcher conditionals")
+    assert source.count('defined(__APPLE__)') == 3
+    source = source.replace('defined(__APPLE__)', 'defined(__APPLE__) && !TARGET_OS_IPHONE')
+    changes[path] = source
+
+    path = upstream / "src/openrct2/core/FileWatcher.cpp"
+    source = path.read_text()
+    assert source.count('defined(__APPLE__)') == 4
+    source = source.replace('defined(__APPLE__)', 'defined(__APPLE__) && !TARGET_OS_IPHONE')
+    source = replace_once(source,
+        '    throw std::runtime_error("FileWatcher not supported on this platform.");',
+        '    #if !defined(__APPLE__)\n    throw std::runtime_error("FileWatcher not supported on this platform.");\n    #endif',
+        "iOS file watcher fallback")
+    source = replace_once(source,
+        '    _watchThread = std::thread(&FileWatcher::WatchDirectory, this);',
+        '    #if !defined(__APPLE__) || !TARGET_OS_IPHONE\n'
+        '    _watchThread = std::thread(&FileWatcher::WatchDirectory, this);\n'
+        '    #endif',
+        "iOS file watcher thread")
+    changes[path] = source
+
     path = upstream / "src/openrct2/core/FlagHolder.hpp"
     source = path.read_text()
     source = replace_once(source,
